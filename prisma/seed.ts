@@ -4,215 +4,272 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 import bcrypt from "bcrypt";
 
-const pool = new pg.Pool({
-  connectionString: process.env["DATABASE_URL"] as string,
-});
+const pool = new pg.Pool({ connectionString: process.env["DATABASE_URL"] as string });
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-async function main() {
-  console.log("🌱 Seeding database...");
+// ── Static data arrays ────────────────────────────────────────────────────────
 
-  // Clean existing data — children before parents
+const FIRST_NAMES = [
+  "Alice", "Bob", "Carol", "Dave", "Emma", "Frank", "Grace", "Henry",
+  "Iris", "Jack", "Karen", "Liam", "Maya", "Noah", "Olivia", "Paul",
+  "Quinn", "Rosa", "Sam", "Tina", "Uma", "Victor", "Wendy", "Xavier",
+  "Yara", "Zack", "Amber", "Brian", "Chloe", "Daniel",
+];
+
+const LAST_NAMES = [
+  "Johnson", "Smith", "Williams", "Brown", "Jones", "Garcia", "Miller",
+  "Davis", "Wilson", "Taylor", "Anderson", "Thomas", "Jackson", "White",
+  "Harris", "Martin", "Thompson", "Young", "Lee", "Walker", "Hall",
+  "Allen", "King", "Wright", "Scott", "Torres", "Mitchell", "Nelson",
+  "Carter", "Ramirez",
+];
+
+const LOCATIONS = [
+  "Downtown, New York", "Brooklyn, New York", "Harlem, New York",
+  "Mission District, San Francisco", "SoMa, San Francisco", "Nob Hill, San Francisco",
+  "West Hollywood, Los Angeles", "Silver Lake, Los Angeles", "Venice Beach, Los Angeles",
+  "Lincoln Park, Chicago", "Wicker Park, Chicago", "The Loop, Chicago",
+  "South Beach, Miami", "Wynwood, Miami", "Coral Gables, Miami",
+  "Downtown, Austin", "East Austin, Texas", "South Congress, Austin",
+  "Malibu, California", "Monterey, California", "Napa Valley, California",
+  "Rocky Mountain National Park, Colorado", "Aspen, Colorado", "Telluride, Colorado",
+  "Outer Banks, North Carolina", "Savannah, Georgia", "New Orleans, Louisiana",
+  "Seattle, Washington", "Portland, Oregon", "Denver, Colorado",
+];
+
+const LISTING_TYPES = ["APARTMENT", "HOUSE", "VILLA", "CABIN"] as const;
+
+const TITLES: Record<string, string[]> = {
+  APARTMENT: [
+    "Cozy Studio in the Heart of the City", "Modern 1-Bed with Skyline Views",
+    "Charming Loft in Arts District", "Bright Corner Apartment Near the Park",
+    "Stylish Minimalist Suite Downtown", "Renovated Historic Apartment",
+    "Luxury High-Rise with Panoramic Views", "Peaceful Garden-Level Studio",
+    "Trendy SoHo Loft with Exposed Brick", "Sunny Rooftop Apartment",
+  ],
+  HOUSE: [
+    "Spacious Victorian Home with Garden", "Charming Craftsman Bungalow",
+    "Modern Farmhouse with Open Plan", "Classic American Home with Porch",
+    "Family-Friendly House Near Schools", "Elegant Townhouse with Rooftop Deck",
+    "Cozy Colonial with Private Yard", "Designer Home with Hot Tub",
+    "Historic Brownstone with Original Details", "Contemporary Smart Home",
+  ],
+  VILLA: [
+    "Beachfront Luxury Villa with Private Pool", "Hilltop Villa with Ocean Views",
+    "Mediterranean Villa with Olive Gardens", "Ultra-Modern Villa with Infinity Pool",
+    "Secluded Jungle Villa with Waterfall", "Clifftop Villa with Sunset Views",
+    "Tuscany-Inspired Villa with Vineyard", "Oceanfront Villa with Private Chef",
+    "Lakeside Villa with Boat Dock", "Desert Villa with Mountain Views",
+  ],
+  CABIN: [
+    "Rustic Log Cabin by Mountain Stream", "Cozy A-Frame with Fireplace",
+    "Lakefront Cabin with Private Dock", "Off-Grid Cabin with Star Gazing Deck",
+    "Forest Treehouse Cabin Experience", "Ski-In Ski-Out Mountain Cabin",
+    "Secluded Cabin on 50 Private Acres", "Restored Historic Trapper's Cabin",
+    "River Cabin with Fishing Access", "Alpine Cabin with Hot Tub",
+  ],
+};
+
+const AMENITY_SETS = [
+  ["WiFi", "Kitchen", "Air Conditioning", "Washer/Dryer"],
+  ["WiFi", "Pool", "Hot Tub", "Parking", "BBQ"],
+  ["WiFi", "Kitchen", "Heating", "Fireplace", "Parking"],
+  ["WiFi", "Kitchen", "Gym", "Doorman", "Elevator"],
+  ["WiFi", "Beach Access", "Kayaks", "Outdoor Shower", "Deck"],
+  ["WiFi", "Ski Storage", "Fireplace", "Sauna", "Mountain Views"],
+  ["WiFi", "Kitchen", "Garden", "BBQ", "Bikes"],
+  ["WiFi", "Pool", "Tennis Court", "Cinema Room", "Chef's Kitchen"],
+  ["WiFi", "Kitchen", "Balcony", "City Views", "Coffee Machine"],
+  ["WiFi", "Hot Tub", "Fireplace", "Hiking Trails", "Stargazing Deck"],
+];
+
+const REVIEW_COMMENTS = [
+  "Absolutely loved every moment — will definitely be back!",
+  "Perfect location and spotlessly clean. Highly recommend.",
+  "The host was incredibly responsive and welcoming.",
+  "Exceeded all our expectations. A true hidden gem.",
+  "Great value for money. Felt like home away from home.",
+  "Beautiful property with stunning views. 10/10 would book again.",
+  "Exactly as described. Smooth check-in and check-out process.",
+  "Comfortable beds, great amenities, fantastic location.",
+  "A wonderful stay — peaceful, clean, and well-equipped.",
+  "The place was stunning and the neighborhood was great.",
+  "Very good stay. Minor issue but host resolved it quickly.",
+  "Nice property. Could use some updating but overall enjoyable.",
+  "The view made everything worth it. Magical sunsets every evening.",
+  "Super clean, super modern, super convenient. Loved it!",
+  "Perfect for a family trip. Kids had a blast by the pool.",
+  "Incredibly romantic getaway. The hot tub under stars was magical.",
+  "Great working-from-home setup. Fast WiFi and quiet environment.",
+  "The local tips from the host made our trip so much richer.",
+  "Woke up to amazing mountain views every morning. Unforgettable.",
+  "Exactly the peaceful escape we needed. Would book immediately again.",
+];
+
+const COUNTRIES = ["USA", "Rwanda", "UK", "Canada", "France", "Germany", "Japan", "Australia"];
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
+async function main() {
+  console.log("🌱 Seeding database with 80 records per model...\n");
+
+  // Clean in child-first order
+  await prisma.review.deleteMany();
   await prisma.booking.deleteMany();
+  await prisma.listingPhoto.deleteMany();
   await prisma.listing.deleteMany();
   await prisma.profile.deleteMany();
   await prisma.user.deleteMany();
+  console.log("  ✓ Cleared existing data");
 
   const hashedPassword = await bcrypt.hash("password123", 10);
 
-  
-  const alice = await prisma.user.create({
-    data: {
-      name: "Alice Johnson",
-      email: "alice@example.com",
-      username: "alice_j",
-      phone: "+1-555-0101",
-      password: hashedPassword,
-      role: "HOST",
-      avatar: "https://randomuser.me/api/portraits/women/1.jpg",
-      bio: "Superhost with 100+ 5-star reviews across NYC",
-    },
-  });
-
-  const carol = await prisma.user.create({
-    data: {
-      name: "Carol Davis",
-      email: "carol@example.com",
-      username: "carol_d",
-      phone: "+1-555-0103",
-      password: hashedPassword,
-      role: "HOST",
-      avatar: "https://randomuser.me/api/portraits/women/3.jpg",
-      bio: "Local host in San Francisco with beachfront properties",
-    },
-  });
-
-  const bob = await prisma.user.create({
-    data: {
-      name: "Bob Smith",
-      email: "bob@example.com",
-      username: "bob_s",
-      phone: "+1-555-0102",
-      password: hashedPassword,
-      role: "GUEST",
-      avatar: "https://randomuser.me/api/portraits/men/2.jpg",
-      bio: "Travel enthusiast from NYC",
-    },
-  });
-
-  const dave = await prisma.user.create({
-    data: {
-      name: "Dave Wilson",
-      email: "dave@example.com",
-      username: "dave_w",
-      phone: "+1-555-0104",
-      password: hashedPassword,
-      role: "GUEST",
-      bio: "Digital nomad, loves mountains",
-    },
-  });
-
-  const emma = await prisma.user.create({
-    data: {
-      name: "Emma Brown",
-      email: "emma@example.com",
-      username: "emma_b",
-      phone: "+1-555-0105",
-      password: hashedPassword,
-      role: "GUEST",
-      avatar: "https://randomuser.me/api/portraits/women/5.jpg",
-      bio: "Weekend explorer and foodie",
-    },
-  });
-
-  console.log(`  ✓ Created 5 users (2 hosts, 3 guests)`);
-
-  // ── Listings ──────────────────────────────────────────────────────────────
-  const apartment = await prisma.listing.create({
-    data: {
-      title: "Cozy Downtown Apartment",
-      description: "Beautiful 1-bedroom apartment in the heart of New York City. Steps from Central Park and world-class dining.",
-      location: "Downtown, New York",
-      pricePerNight: 150,
-      guests: 2,
-      type: "APARTMENT",
-      amenities: ["WiFi", "Air Conditioning", "Kitchen", "Gym", "Doorman"],
-      rating: 4.8,
-      hostId: alice.id,
-    },
-  });
-
-  const house = await prisma.listing.create({
-    data: {
-      title: "Charming Victorian House",
-      description: "Spacious 3-bedroom Victorian home with original hardwood floors and a sunny backyard garden.",
-      location: "Mission District, San Francisco",
-      pricePerNight: 280,
-      guests: 6,
-      type: "HOUSE",
-      amenities: ["WiFi", "Washer/Dryer", "Kitchen", "Garden", "Parking", "BBQ"],
-      rating: 4.7,
-      hostId: carol.id,
-    },
-  });
-
-  const villa = await prisma.listing.create({
-    data: {
-      title: "Beachfront Luxury Villa",
-      description: "Stunning oceanfront villa with private pool, infinity views, and direct beach access. Perfect for a family getaway.",
-      location: "Malibu, California",
-      pricePerNight: 650,
-      guests: 10,
-      type: "VILLA",
-      amenities: ["WiFi", "Pool", "Hot Tub", "Beach Access", "Parking", "Chef's Kitchen", "Home Theater"],
-      rating: 4.9,
-      hostId: alice.id,
-    },
-  });
-
-  const cabin = await prisma.listing.create({
-    data: {
-      title: "Mountain Cabin Retreat",
-      description: "Rustic yet modern cabin surrounded by towering pines and hiking trails. Stargazing deck and stone fireplace.",
-      location: "Rocky Mountain National Park, Colorado",
-      pricePerNight: 120,
-      guests: 4,
-      type: "CABIN",
-      amenities: ["Fireplace", "Kitchen", "Heating", "Hiking Access", "Stargazing Deck"],
-      rating: 4.9,
-      hostId: carol.id,
-    },
-  });
-
-  console.log(`  ✓ Created 4 listings (APARTMENT, HOUSE, VILLA, CABIN)`);
-
-  // ── Bookings ──────────────────────────────────────────────────────────────
-  const booking1CheckIn = new Date("2026-07-01");
-  const booking1CheckOut = new Date("2026-07-05");
-  const booking1Nights = Math.ceil(
-    (booking1CheckOut.getTime() - booking1CheckIn.getTime()) / (1000 * 60 * 60 * 24)
+  // ── 80 Users: 30 HOSTs + 50 GUESTs ──────────────────────────────────────────
+  const users = await Promise.all(
+    Array.from({ length: 80 }, (_, i) => {
+      const isHost = i < 30;
+      const first = FIRST_NAMES[i % FIRST_NAMES.length];
+      const last = LAST_NAMES[i % LAST_NAMES.length];
+      const suffix = i >= FIRST_NAMES.length ? `${Math.floor(i / FIRST_NAMES.length)}` : "";
+      return prisma.user.create({
+        data: {
+          name: `${first} ${last}`,
+          email: `${first.toLowerCase()}.${last.toLowerCase()}${suffix}@example.com`,
+          username: `${first.toLowerCase()}_${last.toLowerCase()}${suffix}`,
+          phone: `+1-555-${String(i + 1000).slice(1)}`,
+          password: hashedPassword,
+          role: isHost ? "HOST" : "GUEST",
+          avatar: `https://randomuser.me/api/portraits/${i % 2 === 0 ? "women" : "men"}/${(i % 70) + 1}.jpg`,
+          bio: isHost
+            ? `Experienced host with ${20 + (i % 8) * 15}+ five-star reviews. I love welcoming guests!`
+            : `Travel enthusiast exploring the world one city at a time.`,
+        },
+      });
+    })
   );
 
-  const booking1 = await prisma.booking.create({
-    data: {
-      guestId: bob.id,
-      listingId: apartment.id,
-      checkIn: booking1CheckIn,
-      checkOut: booking1CheckOut,
-      totalPrice: booking1Nights * apartment.pricePerNight,
-      status: "CONFIRMED",
-    },
-  });
+  const hosts = users.filter((u) => u.role === "HOST");
+  const guests = users.filter((u) => u.role === "GUEST");
+  console.log(`  ✓ Created ${users.length} users — ${hosts.length} HOSTs, ${guests.length} GUESTs`);
 
-  const booking2CheckIn = new Date("2026-08-10");
-  const booking2CheckOut = new Date("2026-08-17");
-  const booking2Nights = Math.ceil(
-    (booking2CheckOut.getTime() - booking2CheckIn.getTime()) / (1000 * 60 * 60 * 24)
+  // ── 80 Listings ──────────────────────────────────────────────────────────────
+  const listings = await Promise.all(
+    Array.from({ length: 80 }, (_, i) => {
+      const type = LISTING_TYPES[i % LISTING_TYPES.length];
+      const host = hosts[i % hosts.length];
+      const location = LOCATIONS[i % LOCATIONS.length];
+      const titlePool = TITLES[type];
+      const base = type === "VILLA" ? 400 : type === "HOUSE" ? 200 : type === "CABIN" ? 110 : 120;
+      const price = base + (i % 10) * 25;
+      const maxGuests =
+        type === "VILLA" ? 8 + (i % 5)
+        : type === "HOUSE" ? 4 + (i % 5)
+        : type === "CABIN" ? 2 + (i % 4)
+        : 1 + (i % 3);
+
+      return prisma.listing.create({
+        data: {
+          title: `${titlePool[i % titlePool.length]} #${i + 1}`,
+          description: `A wonderful ${type.toLowerCase()} in ${location}. Perfectly equipped for ${maxGuests} guests. ${AMENITY_SETS[i % AMENITY_SETS.length].slice(0, 3).join(", ")} and more included.`,
+          location,
+          pricePerNight: price,
+          guests: maxGuests,
+          type,
+          amenities: AMENITY_SETS[i % AMENITY_SETS.length],
+          rating: Number((3.8 + (i % 12) * 0.1).toFixed(1)),
+          hostId: host.id,
+        },
+      });
+    })
   );
 
-  const booking2 = await prisma.booking.create({
-    data: {
-      guestId: dave.id,
-      listingId: cabin.id,
-      checkIn: booking2CheckIn,
-      checkOut: booking2CheckOut,
-      totalPrice: booking2Nights * cabin.pricePerNight,
-      status: "PENDING",
-    },
-  });
+  const countByType = LISTING_TYPES.map(
+    (t) => `${listings.filter((l) => l.type === t).length} ${t}`
+  ).join(", ");
+  console.log(`  ✓ Created ${listings.length} listings — ${countByType}`);
 
-  const booking3CheckIn = new Date("2026-09-15");
-  const booking3CheckOut = new Date("2026-09-20");
-  const booking3Nights = Math.ceil(
-    (booking3CheckOut.getTime() - booking3CheckIn.getTime()) / (1000 * 60 * 60 * 24)
+  // ── 80 Bookings ───────────────────────────────────────────────────────────────
+  const STATUSES = ["CONFIRMED", "PENDING", "CANCELLED"] as const;
+
+  const bookings = await Promise.all(
+    Array.from({ length: 80 }, (_, i) => {
+      const guest = guests[i % guests.length];
+      const listing = listings[i % listings.length];
+      const status = STATUSES[i % STATUSES.length];
+
+      // Spread check-ins over the next 18 months (30 days apart each)
+      const checkIn = new Date();
+      checkIn.setDate(checkIn.getDate() + 30 + i * 7);
+      const checkOut = new Date(checkIn);
+      checkOut.setDate(checkOut.getDate() + 2 + (i % 8));
+
+      const nights = Math.ceil(
+        (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      return prisma.booking.create({
+        data: {
+          guestId: guest.id,
+          listingId: listing.id,
+          checkIn,
+          checkOut,
+          totalPrice: nights * listing.pricePerNight,
+          status,
+        },
+      });
+    })
   );
 
-  const booking3 = await prisma.booking.create({
-    data: {
-      guestId: emma.id,
-      listingId: villa.id,
-      checkIn: booking3CheckIn,
-      checkOut: booking3CheckOut,
-      totalPrice: booking3Nights * villa.pricePerNight,
-      status: "CONFIRMED",
-    },
-  });
+  const byStatus = STATUSES.map(
+    (s) => `${bookings.filter((b) => b.status === s).length} ${s}`
+  ).join(", ");
+  console.log(`  ✓ Created ${bookings.length} bookings — ${byStatus}`);
 
-  console.log(`  ✓ Created 3 bookings:`);
-  console.log(`    - Bob  → Apartment  (${booking1Nights} nights, $${booking1.totalPrice}) [CONFIRMED]`);
-  console.log(`    - Dave → Cabin      (${booking2Nights} nights, $${booking2.totalPrice}) [PENDING]`);
-  console.log(`    - Emma → Villa      (${booking3Nights} nights, $${booking3.totalPrice}) [CONFIRMED]`);
+  // ── 80 Reviews ────────────────────────────────────────────────────────────────
+  const reviews = await Promise.all(
+    Array.from({ length: 80 }, (_, i) => {
+      const guest = guests[i % guests.length];
+      // Spread across listings so each listing gets several reviews
+      const listing = listings[(i * 3) % listings.length];
+      const rating = 3 + (i % 3); // 3, 4, or 5
+
+      return prisma.review.create({
+        data: {
+          rating,
+          comment: REVIEW_COMMENTS[i % REVIEW_COMMENTS.length],
+          userId: guest.id,
+          listingId: listing.id,
+        },
+      });
+    })
+  );
+
+  const avgRating = (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1);
+  const byRating = [3, 4, 5].map(
+    (r) => `${reviews.filter((rv) => rv.rating === r).length}★${r}`
+  ).join(", ");
+  console.log(`  ✓ Created ${reviews.length} reviews — avg ${avgRating} (${byRating})`);
+
+  // ── 80 Profiles (all users get one) ──────────────────────────────────────────
+  await Promise.all(
+    users.map((user, i) =>
+      prisma.profile.create({
+        data: {
+          bio: `${user.name.split(" ")[0]} is passionate about travel, culture, and memorable experiences.`,
+          website: `https://${user.username}.example.com`,
+          country: COUNTRIES[i % COUNTRIES.length],
+          userId: user.id,
+        },
+      })
+    )
+  );
+  console.log(`  ✓ Created ${users.length} profiles (one per user)`);
 
   console.log("\n✅ Seeding complete!");
+  console.log(`   Users: ${users.length} | Listings: ${listings.length} | Bookings: ${bookings.length} | Reviews: ${reviews.length} | Profiles: ${users.length}`);
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-    await pool.end();
-  });
+  .catch((e) => { console.error(e); process.exit(1); })
+  .finally(async () => { await prisma.$disconnect(); await pool.end(); });
