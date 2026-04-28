@@ -1,31 +1,47 @@
-interface CacheEntry {
-  data: unknown;
-  expiresAt: number;
-}
+import { getRedisClient } from "./redis";
 
-const store = new Map<string, CacheEntry>();
-
-export function getCache<T>(key: string): T | null {
-  const entry = store.get(key);
-  if (!entry) return null;
-  if (Date.now() > entry.expiresAt) {
-    store.delete(key);
+export async function getCache<T>(key: string): Promise<T | null> {
+  const redis = getRedisClient();
+  if (!redis) return null;
+  try {
+    const raw = await redis.get(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
     return null;
   }
-  return entry.data as T;
 }
 
-export function setCache(key: string, data: unknown, ttlSeconds: number): void {
-  store.set(key, { data, expiresAt: Date.now() + ttlSeconds * 1000 });
+export async function setCache(key: string, data: unknown, ttlSeconds: number): Promise<void> {
+  const redis = getRedisClient();
+  if (!redis) return;
+  try {
+    await redis.setex(key, ttlSeconds, JSON.stringify(data));
+  } catch (e) {
+    console.error("[cache] setCache failed:", e);
+  }
 }
 
-export function deleteCache(key: string): void {
-  store.delete(key);
+export async function deleteCache(key: string): Promise<void> {
+  const redis = getRedisClient();
+  if (!redis) return;
+  try {
+    await redis.del(key);
+  } catch (e) {
+    console.error("[cache] deleteCache failed:", e);
+  }
 }
 
-/** Delete every key that starts with the given prefix. */
-export function deleteCacheByPrefix(prefix: string): void {
-  for (const key of store.keys()) {
-    if (key.startsWith(prefix)) store.delete(key);
+/**
+ * Deletes every key whose name starts with `prefix`.
+ * Uses KEYS — fine for low volume. For high traffic consider SCAN instead.
+ */
+export async function deleteCacheByPrefix(prefix: string): Promise<void> {
+  const redis = getRedisClient();
+  if (!redis) return;
+  try {
+    const keys = await redis.keys(`${prefix}*`);
+    if (keys.length > 0) await redis.del(...keys);
+  } catch (e) {
+    console.error("[cache] deleteCacheByPrefix failed:", e);
   }
 }

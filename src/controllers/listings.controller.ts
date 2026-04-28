@@ -1,12 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { Prisma, ListingType } from "@prisma/client";
 import prisma from "../config/prisma";
-import { getCache, setCache, deleteCacheByPrefix } from "../config/cache";
+import { getCache, setCache, deleteCache, deleteCacheByPrefix } from "../config/cache";
 import { createListingSchema, updateListingSchema } from "../validators/listings.validator";
 
-function invalidateListingCaches(): void {
-  deleteCacheByPrefix("listings:all:");
-  deleteCacheByPrefix("listings:stats");
+async function invalidateListingCaches(): Promise<void> {
+  await Promise.all([
+    deleteCacheByPrefix("listings:all:"),
+    deleteCache("listings:stats"),
+  ]);
 }
 
 export async function getAllListings(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -23,7 +25,7 @@ export async function getAllListings(req: Request, res: Response, next: NextFunc
 
     // Cache keyed by the full query string
     const cacheKey = `listings:all:${JSON.stringify(req.query)}`;
-    const cached = getCache<unknown>(cacheKey);
+    const cached = await getCache<unknown>(cacheKey);
     if (cached) {
       res.setHeader("X-Cache", "HIT");
       res.status(200).json(cached);
@@ -85,7 +87,7 @@ export async function getAllListings(req: Request, res: Response, next: NextFunc
       meta: { page: pageNum, limit: limitNum, total, totalPages: Math.ceil(total / limitNum) },
     };
 
-    setCache(cacheKey, result, 60); // 60-second cache
+    await setCache(cacheKey, result, 60); // 60-second cache
     res.setHeader("X-Cache", "MISS");
     res.status(200).json(result);
   } catch (error) {
@@ -182,7 +184,7 @@ export async function createListing(req: Request, res: Response, next: NextFunct
       data: { ...result.data, hostId: req.userId! },
     });
 
-    invalidateListingCaches();
+    await invalidateListingCaches();
     res.status(201).json(listing);
   } catch (error) {
     next(error);
@@ -215,7 +217,7 @@ export async function updateListing(req: Request, res: Response, next: NextFunct
       data: result.data,
     });
 
-    invalidateListingCaches();
+    await invalidateListingCaches();
     res.status(200).json(listing);
   } catch (error) {
     next(error);
@@ -238,7 +240,7 @@ export async function deleteListing(req: Request, res: Response, next: NextFunct
     }
 
     const listing = await prisma.listing.delete({ where: { id: Number(id) } });
-    invalidateListingCaches();
+    await invalidateListingCaches();
     res.status(200).json(listing);
   } catch (error) {
     next(error);

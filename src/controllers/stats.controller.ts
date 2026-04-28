@@ -5,7 +5,7 @@ import { getCache, setCache } from "../config/cache";
 export async function getListingStats(_req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const cacheKey = "listings:stats";
-    const cached = getCache<unknown>(cacheKey);
+    const cached = await getCache<unknown>(cacheKey);
     if (cached) {
       res.setHeader("X-Cache", "HIT");
       res.status(200).json(cached);
@@ -26,7 +26,7 @@ export async function getListingStats(_req: Request, res: Response, next: NextFu
       byType,
     };
 
-    setCache(cacheKey, data, 5 * 60); // 5-minute cache
+    await setCache(cacheKey, data, 5 * 60); // 5-minute cache
     res.setHeader("X-Cache", "MISS");
     res.status(200).json(data);
   } catch (error) {
@@ -37,7 +37,7 @@ export async function getListingStats(_req: Request, res: Response, next: NextFu
 export async function getUserStats(_req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const cacheKey = "users:stats";
-    const cached = getCache<unknown>(cacheKey);
+    const cached = await getCache<unknown>(cacheKey);
     if (cached) {
       res.setHeader("X-Cache", "HIT");
       res.status(200).json(cached);
@@ -51,7 +51,7 @@ export async function getUserStats(_req: Request, res: Response, next: NextFunct
 
     const data = { totalUsers, byRole };
 
-    setCache(cacheKey, data, 5 * 60); // 5-minute cache
+    await setCache(cacheKey, data, 5 * 60); // 5-minute cache
     res.setHeader("X-Cache", "MISS");
     res.status(200).json(data);
   } catch (error) {

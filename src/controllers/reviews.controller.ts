@@ -9,7 +9,7 @@ export async function getListingReviews(req: Request, res: Response, next: NextF
     const limitNum = Math.max(1, parseInt(String(req.query["limit"] ?? "10"), 10));
 
     const cacheKey = `reviews:listing:${id}:${pageNum}:${limitNum}`;
-    const cached = getCache<unknown>(cacheKey);
+    const cached = await getCache<unknown>(cacheKey);
     if (cached) {
       res.setHeader("X-Cache", "HIT");
       res.status(200).json(cached);
@@ -38,7 +38,7 @@ export async function getListingReviews(req: Request, res: Response, next: NextF
       meta: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) },
     };
 
-    setCache(cacheKey, result, 30); // 30-second cache
+    await setCache(cacheKey, result, 30); // 30-second cache
     res.setHeader("X-Cache", "MISS");
     res.status(200).json(result);
   } catch (error) {
@@ -75,7 +75,7 @@ export async function createReview(req: Request, res: Response, next: NextFuncti
     });
 
     // Invalidate review cache for this listing
-    deleteCacheByPrefix(`reviews:listing:${id}:`);
+    await deleteCacheByPrefix(`reviews:listing:${id}:`);
 
     res.status(201).json(review);
   } catch (error) {
@@ -101,7 +101,7 @@ export async function deleteReview(req: Request, res: Response, next: NextFuncti
     await prisma.review.delete({ where: { id: Number(id) } });
 
     // Invalidate review cache for the listing
-    deleteCacheByPrefix(`reviews:listing:${review.listingId}:`);
+    await deleteCacheByPrefix(`reviews:listing:${review.listingId}:`);
 
     res.status(200).json({ message: "Review deleted successfully" });
   } catch (error) {

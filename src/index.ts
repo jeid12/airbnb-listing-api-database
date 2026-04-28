@@ -3,6 +3,7 @@ import express, { type Request, type Response, type NextFunction } from "express
 import compression from "compression";
 import morgan from "morgan";
 import { connectDB } from "./config/prisma";
+import { connectRedis } from "./config/redis";
 import { setupSwagger } from "./config/swagger";
 import { generalLimiter, strictLimiter } from "./middlewares/rateLimiter";
 import { authRouter } from "./routes/auth.routes";
@@ -53,6 +54,7 @@ app.use(errorHandler);
 
 async function main() {
   await connectDB();
+  await connectRedis();
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
   });
