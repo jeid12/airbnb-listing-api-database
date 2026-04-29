@@ -6,10 +6,10 @@ import {
   createListing,
   updateListing,
   deleteListing,
-} from "../controllers/listings.controller";
-import { getListingStats } from "../controllers/stats.controller";
-import { getListingReviews, createReview } from "../controllers/reviews.controller";
-import { authenticate, requireHost } from "../middlewares/auth.middleware";
+} from "../../controllers/listings.controller";
+import { getListingStats } from "../../controllers/stats.controller";
+import { getListingReviews, createReview } from "../../controllers/reviews.controller";
+import { authenticate, requireHost } from "../../middlewares/auth.middleware";
 
 export const listingsRouter = Router();
 

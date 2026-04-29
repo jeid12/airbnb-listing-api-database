@@ -151,7 +151,7 @@ export async function getListingById(req: Request, res: Response, next: NextFunc
   try {
     const { id } = req.params;
     const listing = await prisma.listing.findUnique({
-      where: { id: Number(id) },
+      where: { id: String(id) },
       include: {
         host: true,
         bookings: {
@@ -195,7 +195,7 @@ export async function updateListing(req: Request, res: Response, next: NextFunct
   try {
     const { id } = req.params;
 
-    const existing = await prisma.listing.findFirst({ where: { id: Number(id) } });
+    const existing = await prisma.listing.findFirst({ where: { id: String(id) } });
     if (!existing) {
       res.status(404).json({ error: `Listing with id ${id} not found` });
       return;
@@ -213,7 +213,7 @@ export async function updateListing(req: Request, res: Response, next: NextFunct
     }
 
     const listing = await prisma.listing.update({
-      where: { id: Number(id) },
+      where: { id: String(id) },
       data: result.data,
     });
 
@@ -228,7 +228,7 @@ export async function deleteListing(req: Request, res: Response, next: NextFunct
   try {
     const { id } = req.params;
 
-    const existing = await prisma.listing.findFirst({ where: { id: Number(id) } });
+    const existing = await prisma.listing.findFirst({ where: { id: String(id) } });
     if (!existing) {
       res.status(404).json({ error: `Listing with id ${id} not found` });
       return;
@@ -239,7 +239,7 @@ export async function deleteListing(req: Request, res: Response, next: NextFunct
       return;
     }
 
-    const listing = await prisma.listing.delete({ where: { id: Number(id) } });
+    const listing = await prisma.listing.delete({ where: { id: String(id) } });
     await invalidateListingCaches();
     res.status(200).json(listing);
   } catch (error) {

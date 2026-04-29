@@ -16,7 +16,7 @@ export async function getListingReviews(req: Request, res: Response, next: NextF
       return;
     }
 
-    const listingExists = await prisma.listing.findFirst({ where: { id: Number(id) } });
+    const listingExists = await prisma.listing.findFirst({ where: { id: String(id) } });
     if (!listingExists) {
       res.status(404).json({ error: `Listing with id ${id} not found` });
       return;
@@ -24,13 +24,13 @@ export async function getListingReviews(req: Request, res: Response, next: NextF
 
     const [reviews, total] = await Promise.all([
       prisma.review.findMany({
-        where: { listingId: Number(id) },
+        where: { listingId: String(id) },
         include: { user: { select: { name: true, avatar: true } } },
         orderBy: { createdAt: "desc" },
         skip: (pageNum - 1) * limitNum,
         take: limitNum,
       }),
-      prisma.review.count({ where: { listingId: Number(id) } }),
+      prisma.review.count({ where: { listingId: String(id) } }),
     ]);
 
     const result = {
@@ -63,14 +63,14 @@ export async function createReview(req: Request, res: Response, next: NextFuncti
       return;
     }
 
-    const listing = await prisma.listing.findFirst({ where: { id: Number(id) } });
+    const listing = await prisma.listing.findFirst({ where: { id: String(id) } });
     if (!listing) {
       res.status(404).json({ error: `Listing with id ${id} not found` });
       return;
     }
 
     const review = await prisma.review.create({
-      data: { rating: ratingNum, comment, userId, listingId: Number(id) },
+      data: { rating: ratingNum, comment, userId, listingId: String(id) },
       include: { user: { select: { name: true, avatar: true } } },
     });
 
@@ -87,7 +87,7 @@ export async function deleteReview(req: Request, res: Response, next: NextFuncti
   try {
     const { id } = req.params;
 
-    const review = await prisma.review.findFirst({ where: { id: Number(id) } });
+    const review = await prisma.review.findFirst({ where: { id: String(id) } });
     if (!review) {
       res.status(404).json({ error: `Review with id ${id} not found` });
       return;
@@ -98,7 +98,7 @@ export async function deleteReview(req: Request, res: Response, next: NextFuncti
       return;
     }
 
-    await prisma.review.delete({ where: { id: Number(id) } });
+    await prisma.review.delete({ where: { id: String(id) } });
 
     // Invalidate review cache for the listing
     await deleteCacheByPrefix(`reviews:listing:${review.listingId}:`);

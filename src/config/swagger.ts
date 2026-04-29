@@ -18,9 +18,9 @@ const options: swaggerJSDoc.Options = {
     servers: [
       {
         url: isProduction
-          ? process.env["API_URL"] ?? PRODUCTION_URL
-          : `http://localhost:${process.env["PORT"] ?? 3000}`,
-        description: isProduction ? "Production" : "Local development",
+          ? `${process.env["API_URL"] ?? PRODUCTION_URL}/api/v1`
+          : `http://localhost:${process.env["PORT"] ?? 3000}/api/v1`,
+        description: isProduction ? "Production (v1)" : "Local development (v1)",
       },
     ],
     components: {
@@ -34,7 +34,7 @@ const options: swaggerJSDoc.Options = {
       },
     },
   },
-  apis: isProduction ? ["./dist/routes/*.js"] : ["./src/routes/*.ts"],
+  apis: isProduction ? ["./dist/routes/v1/*.js"] : ["./src/routes/v1/*.ts"],
 };
 
 const swaggerSpec = swaggerJSDoc(options);
@@ -65,4 +65,5 @@ export function setupSwagger(app: Express): void {
   const base = isProduction ? PRODUCTION_URL : `http://localhost:${process.env["PORT"] ?? 3000}`;
   console.log(`Swagger UI  → ${base}/api-docs`);
   console.log(`ReDoc       → ${base}/api-redoc`);
+  console.log(`API v1      → ${base}/api/v1`);
 }

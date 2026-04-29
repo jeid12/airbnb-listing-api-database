@@ -8,7 +8,7 @@ const OMIT_SENSITIVE = { password: true, resetToken: true, resetTokenExpiry: tru
 
 export async function uploadAvatar(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = Number(req.params["id"]);
+    const userId = String(req.params["id"]);
 
     if (req.userId !== userId) {
       res.status(403).json({ error: "You can only update your own avatar" });
@@ -49,7 +49,7 @@ export async function uploadAvatar(req: Request, res: Response, next: NextFuncti
 
 export async function deleteAvatar(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const userId = Number(req.params["id"]);
+    const userId = String(req.params["id"]);
 
     if (req.userId !== userId) {
       res.status(403).json({ error: "You can only remove your own avatar" });
@@ -86,7 +86,7 @@ export async function deleteAvatar(req: Request, res: Response, next: NextFuncti
 
 export async function uploadListingPhotos(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const listingId = Number(req.params["id"]);
+    const listingId = String(req.params["id"]);
 
     const listing = await prisma.listing.findFirst({ where: { id: listingId } });
     if (!listing) {
@@ -134,8 +134,8 @@ export async function uploadListingPhotos(req: Request, res: Response, next: Nex
 
 export async function deleteListingPhoto(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const listingId = Number(req.params["id"]);
-    const photoId = Number(req.params["photoId"]);
+    const listingId = String(req.params["id"]);
+    const photoId = String(req.params["photoId"]);
 
     const listing = await prisma.listing.findFirst({ where: { id: listingId } });
     if (!listing) {

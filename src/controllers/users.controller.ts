@@ -20,7 +20,7 @@ export async function getUserById(req: Request, res: Response, next: NextFunctio
   try {
     const { id } = req.params;
 
-    const user = await prisma.user.findUnique({ where: { id: Number(id) } });
+    const user = await prisma.user.findUnique({ where: { id: String(id) } });
     if (!user) {
       res.status(404).json({ error: `User with id ${id} not found` });
       return;
@@ -28,7 +28,7 @@ export async function getUserById(req: Request, res: Response, next: NextFunctio
 
     if (user.role === "HOST") {
       const result = await prisma.user.findUnique({
-        where: { id: Number(id) },
+        where: { id: String(id) },
         omit: OMIT_SENSITIVE,
         include: {
           listings: { include: { _count: { select: { bookings: true } } } },
@@ -38,7 +38,7 @@ export async function getUserById(req: Request, res: Response, next: NextFunctio
       res.status(200).json(result);
     } else {
       const result = await prisma.user.findUnique({
-        where: { id: Number(id) },
+        where: { id: String(id) },
         omit: OMIT_SENSITIVE,
         include: {
           bookings: {
@@ -73,7 +73,7 @@ export async function updateUser(req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
 
-    const existing = await prisma.user.findFirst({ where: { id: Number(id) } });
+    const existing = await prisma.user.findFirst({ where: { id: String(id) } });
     if (!existing) {
       res.status(404).json({ error: `User with id ${id} not found` });
       return;
@@ -86,7 +86,7 @@ export async function updateUser(req: Request, res: Response, next: NextFunction
     }
 
     const user = await prisma.user.update({
-      where: { id: Number(id) },
+      where: { id: String(id) },
       data: result.data,
       omit: OMIT_SENSITIVE,
     });
@@ -101,13 +101,13 @@ export async function deleteUser(req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
 
-    const existing = await prisma.user.findFirst({ where: { id: Number(id) } });
+    const existing = await prisma.user.findFirst({ where: { id: String(id) } });
     if (!existing) {
       res.status(404).json({ error: `User with id ${id} not found` });
       return;
     }
 
-    const user = await prisma.user.delete({ where: { id: Number(id) }, omit: OMIT_SENSITIVE });
+    const user = await prisma.user.delete({ where: { id: String(id) }, omit: OMIT_SENSITIVE });
     res.status(200).json(user);
   } catch (error) {
     next(error);
@@ -118,14 +118,14 @@ export async function getListingsByUser(req: Request, res: Response, next: NextF
   try {
     const { id } = req.params;
 
-    const user = await prisma.user.findFirst({ where: { id: Number(id) } });
+    const user = await prisma.user.findFirst({ where: { id: String(id) } });
     if (!user) {
       res.status(404).json({ error: `User with id ${id} not found` });
       return;
     }
 
     const listings = await prisma.listing.findMany({
-      where: { hostId: Number(id) },
+      where: { hostId: String(id) },
       include: { _count: { select: { bookings: true } } },
     });
     res.status(200).json(listings);
@@ -138,14 +138,14 @@ export async function getBookingsByUser(req: Request, res: Response, next: NextF
   try {
     const { id } = req.params;
 
-    const user = await prisma.user.findFirst({ where: { id: Number(id) } });
+    const user = await prisma.user.findFirst({ where: { id: String(id) } });
     if (!user) {
       res.status(404).json({ error: `User with id ${id} not found` });
       return;
     }
 
     const bookings = await prisma.booking.findMany({
-      where: { guestId: Number(id) },
+      where: { guestId: String(id) },
       include: { listing: { select: { title: true, location: true } } },
     });
     res.status(200).json(bookings);

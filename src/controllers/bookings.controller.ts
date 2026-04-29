@@ -40,7 +40,7 @@ export async function getBookingById(req: Request, res: Response, next: NextFunc
   try {
     const { id } = req.params;
     const booking = await prisma.booking.findUnique({
-      where: { id: Number(id) },
+      where: { id: String(id) },
       include: {
         guest: { select: { id: true, name: true, email: true, username: true, avatar: true } },
         listing: {
@@ -139,7 +139,7 @@ export async function deleteBooking(req: Request, res: Response, next: NextFunct
   try {
     const { id } = req.params;
 
-    const booking = await prisma.booking.findFirst({ where: { id: Number(id) } });
+    const booking = await prisma.booking.findFirst({ where: { id: String(id) } });
     if (!booking) {
       res.status(404).json({ error: `Booking with id ${id} not found` });
       return;
@@ -157,7 +157,7 @@ export async function deleteBooking(req: Request, res: Response, next: NextFunct
 
     // Cancel — keep the record for history, just update status
     const updated = await prisma.booking.update({
-      where: { id: Number(id) },
+      where: { id: String(id) },
       data: { status: BookingStatus.CANCELLED },
       include: { listing: { select: { title: true } } },
     });
@@ -196,14 +196,14 @@ export async function updateBookingStatus(req: Request, res: Response, next: Nex
       return;
     }
 
-    const existing = await prisma.booking.findFirst({ where: { id: Number(id) } });
+    const existing = await prisma.booking.findFirst({ where: { id: String(id) } });
     if (!existing) {
       res.status(404).json({ error: `Booking with id ${id} not found` });
       return;
     }
 
     const booking = await prisma.booking.update({
-      where: { id: Number(id) },
+      where: { id: String(id) },
       data: { status: status as BookingStatus },
     });
 

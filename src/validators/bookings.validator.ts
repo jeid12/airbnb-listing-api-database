@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const createBookingSchema = z
   .object({
-    listingId: z.number().int().positive("listingId must be a positive integer"),
+    listingId: z.string().min(1, "listingId is required"),
     checkIn: z.coerce.date(),
     checkOut: z.coerce.date(),
   })

@@ -6,26 +6,17 @@ import { connectDB } from "./config/prisma";
 import { connectRedis } from "./config/redis";
 import { setupSwagger } from "./config/swagger";
 import { generalLimiter, strictLimiter } from "./middlewares/rateLimiter";
-import { authRouter } from "./routes/auth.routes";
-import { usersRouter } from "./routes/users.routes";
-import { listingsRouter } from "./routes/listings.routes";
-import { bookingsRouter } from "./routes/bookings.routes";
-import { reviewsRouter } from "./routes/reviews.routes";
-import { uploadRouter } from "./routes/upload.routes";
+import { v1Router } from "./routes/v1/index";
 import { errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
 const PORT = Number(process.env["PORT"]) || 3000;
 
-// Compression — must come before routes so responses are compressed
 app.use(compression());
-
-// Logging
 app.use(morgan(process.env["NODE_ENV"] === "production" ? "combined" : "dev"));
-
 app.use(express.json());
 
-// Rate limiting — general limiter on all routes, strict limiter on POSTs
+// Rate limiting
 app.use(generalLimiter);
 app.use((req: Request, res: Response, next: NextFunction) => {
   if (req.method === "POST") return strictLimiter(req, res, next);
@@ -39,13 +30,22 @@ app.get("/health", (_req, res) => {
 
 setupSwagger(app);
 
-app.use("/auth", authRouter);
-app.use("/users", usersRouter);
-app.use("/listings", listingsRouter);
-app.use("/bookings", bookingsRouter);
-app.use("/reviews", reviewsRouter);
-app.use("/", uploadRouter);
+// Versioned API
+app.use("/api/v1", v1Router);
 
+// Root redirect to docs
+app.get("/", (_req: Request, res: Response) => {
+  res.json({
+    name: "Airbnb API",
+    version: "v1",
+    docs: "/api-docs",
+    redoc: "/api-redoc",
+    health: "/health",
+    api: "/api/v1",
+  });
+});
+
+// 404 handler
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: "Route not found" });
 });

@@ -6,7 +6,7 @@ export async function getProfile(req: Request, res: Response, next: NextFunction
   try {
     const { id } = req.params;
 
-    const profile = await prisma.profile.findUnique({ where: { userId: Number(id) } });
+    const profile = await prisma.profile.findUnique({ where: { userId: String(id) } });
     if (!profile) {
       res.status(404).json({ error: `Profile for user ${id} not found` });
       return;
@@ -22,13 +22,13 @@ export async function createProfile(req: Request, res: Response, next: NextFunct
   try {
     const { id } = req.params;
 
-    const user = await prisma.user.findFirst({ where: { id: Number(id) } });
+    const user = await prisma.user.findFirst({ where: { id: String(id) } });
     if (!user) {
       res.status(404).json({ error: `User with id ${id} not found` });
       return;
     }
 
-    const existing = await prisma.profile.findUnique({ where: { userId: Number(id) } });
+    const existing = await prisma.profile.findUnique({ where: { userId: String(id) } });
     if (existing) {
       res.status(409).json({ error: `User ${id} already has a profile` });
       return;
@@ -41,7 +41,7 @@ export async function createProfile(req: Request, res: Response, next: NextFunct
     }
 
     const profile = await prisma.profile.create({
-      data: { ...result.data, userId: Number(id) },
+      data: { ...result.data, userId: String(id) },
     });
 
     res.status(201).json(profile);
@@ -54,13 +54,13 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
   try {
     const { id } = req.params;
 
-    const user = await prisma.user.findFirst({ where: { id: Number(id) } });
+    const user = await prisma.user.findFirst({ where: { id: String(id) } });
     if (!user) {
       res.status(404).json({ error: `User with id ${id} not found` });
       return;
     }
 
-    const existing = await prisma.profile.findUnique({ where: { userId: Number(id) } });
+    const existing = await prisma.profile.findUnique({ where: { userId: String(id) } });
     if (!existing) {
       res.status(404).json({ error: `Profile for user ${id} not found` });
       return;
@@ -73,7 +73,7 @@ export async function updateProfile(req: Request, res: Response, next: NextFunct
     }
 
     const profile = await prisma.profile.update({
-      where: { userId: Number(id) },
+      where: { userId: String(id) },
       data: result.data,
     });
 

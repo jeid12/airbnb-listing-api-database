@@ -7,13 +7,13 @@ import {
   deleteUser,
   getListingsByUser,
   getBookingsByUser,
-} from "../controllers/users.controller";
+} from "../../controllers/users.controller";
 import {
   getProfile,
   createProfile,
   updateProfile,
-} from "../controllers/profile.controller";
-import { getUserStats } from "../controllers/stats.controller";
+} from "../../controllers/profile.controller";
+import { getUserStats } from "../../controllers/stats.controller";
 
 export const usersRouter = Router();
 
