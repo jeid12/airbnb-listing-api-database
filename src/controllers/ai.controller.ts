@@ -59,6 +59,30 @@ type ListingGroup = {
   listings: GroupedListing[];
 };
 
+function fallbackSearchFiltersFromQuery(query: string): SearchFilters {
+  const normalizedQuery = query.toLowerCase();
+
+  const locationMatch = query.match(/\b(?:in|at|around|near)\s+([a-zA-Z][a-zA-Z\s'-]{1,60}?)(?=\s+(?:under|below|less than|for|with|$)|[,.!?])/i);
+  const priceMatch = normalizedQuery.match(/(?:under|below|less than|max(?:imum)?(?: price)?(?: of)?)\s*\$?\s*(\d+(?:\.\d+)?)/i);
+  const guestsMatch = normalizedQuery.match(/(?:for|accommodates|fits|sleep(?:s|ing)?)\s*(\d+)\s*(?:guest|guests|people|ppl|person)?/i);
+
+  return {
+    location: locationMatch?.[1]?.trim() ?? null,
+    type:
+      normalizedQuery.includes("apartment")
+        ? "APARTMENT"
+        : normalizedQuery.includes("house")
+          ? "HOUSE"
+          : normalizedQuery.includes("villa")
+            ? "VILLA"
+            : normalizedQuery.includes("cabin")
+              ? "CABIN"
+              : null,
+    maxPrice: priceMatch?.[1] ? Number(priceMatch[1]) : null,
+    guests: guestsMatch?.[1] ? Number(guestsMatch[1]) : null,
+  };
+}
+
 function extractJsonObject<T>(content: string): T | null {
   const match = content.match(/\{[\s\S]*\}/);
   if (!match) return null;
@@ -191,11 +215,19 @@ Rules:
       const aiResponse = await filterModel.invoke([new HumanMessage(filterPrompt)]);
       const content = String(aiResponse.content).trim();
       const parsed = extractJsonObject<SearchFilters>(content);
-      if (!parsed) throw new Error("No valid JSON in response");
-      filters = parsed;
-    } catch {
-      res.status(500).json({ error: "AI service returned an invalid response, please try again" });
-      return;
+      filters = parsed ?? fallbackSearchFiltersFromQuery(query);
+    } catch (error) {
+      const err = error as AiErrorLike;
+      const status =
+        (typeof err.status === "number" ? err.status : undefined) ??
+        (typeof err.response?.status === "number" ? err.response.status : undefined);
+
+      if (status === 429 || status === 401) {
+        handleAiError(error, res, next);
+        return;
+      }
+
+      filters = fallbackSearchFiltersFromQuery(query);
     }
 
     const allNull = !filters.location && !filters.type && !filters.maxPrice && !filters.guests;
