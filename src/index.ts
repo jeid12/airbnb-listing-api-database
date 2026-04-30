@@ -12,6 +12,10 @@ import { errorHandler } from "./middlewares/errorHandler";
 const app = express();
 const PORT = Number(process.env["PORT"]) || 3000;
 
+// Render terminates TLS/proxies requests before they reach Express.
+// Trusting one proxy avoids express-rate-limit throwing on X-Forwarded-For.
+app.set("trust proxy", 1);
+
 app.use(compression());
 app.use(morgan(process.env["NODE_ENV"] === "production" ? "combined" : "dev"));
 app.use(express.json());
