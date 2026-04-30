@@ -2,6 +2,7 @@ import { Router } from "express";
 import { authenticate } from "../../middlewares/auth.middleware";
 import {
   aiSearch,
+  groupedListings,
   generateDescription,
   chat,
   recommend,
@@ -12,6 +13,9 @@ export const aiRouter = Router();
 
 // Part 1 — Smart listing search with pagination
 aiRouter.post("/search", aiSearch);
+
+// Part 1b — Group listings by location or host
+aiRouter.get("/listings/grouped", groupedListings);
 
 // Part 2 — Generate listing description (auth required, owner only)
 aiRouter.post("/listings/:id/generate-description", authenticate, generateDescription);

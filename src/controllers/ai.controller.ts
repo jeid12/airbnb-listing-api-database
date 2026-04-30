@@ -33,6 +33,32 @@ type ReviewSummaryPayload = {
   negatives: string[];
 };
 
+type GroupByMode = "location" | "host";
+
+type GroupedListing = {
+  id: string;
+  title: string;
+  location: string;
+  pricePerNight: number;
+  guests: number;
+  type: ListingType;
+  amenities: string[];
+  rating: number | null;
+  createdAt: Date;
+  host: {
+    id: string;
+    name: string;
+    email: string;
+  };
+};
+
+type ListingGroup = {
+  key: string;
+  label: string;
+  count: number;
+  listings: GroupedListing[];
+};
+
 function extractJsonObject<T>(content: string): T | null {
   const match = content.match(/\{[\s\S]*\}/);
   if (!match) return null;
@@ -78,6 +104,34 @@ function buildListingWhere(filters: SearchFilters, excludeIds: string[] = []): P
   }
 
   return where;
+}
+
+function groupListings(listings: GroupedListing[], groupBy: GroupByMode): ListingGroup[] {
+  const groups = new Map<string, ListingGroup>();
+
+  for (const listing of listings) {
+    const key = groupBy === "location" ? listing.location : listing.host.id;
+    const label = groupBy === "location" ? listing.location : listing.host.name;
+
+    const existing = groups.get(key);
+    if (existing) {
+      existing.count += 1;
+      existing.listings.push(listing);
+      continue;
+    }
+
+    groups.set(key, {
+      key,
+      label,
+      count: 1,
+      listings: [listing],
+    });
+  }
+
+  return Array.from(groups.values()).sort((left, right) => {
+    if (right.count !== left.count) return right.count - left.count;
+    return left.label.localeCompare(right.label);
+  });
 }
 
 function handleAiError(error: unknown, res: Response, next: NextFunction): void {
@@ -175,6 +229,45 @@ Rules:
     });
   } catch (error) {
     handleAiError(error, res, next);
+  }
+}
+
+// ─── Part 1b: Grouped Listing Results ───────────────────────────────────────
+
+export async function groupedListings(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const groupByRaw = String(req.query["groupBy"] ?? "location").toLowerCase();
+    if (groupByRaw !== "location" && groupByRaw !== "host") {
+      res.status(400).json({ error: "groupBy must be either location or host" });
+      return;
+    }
+
+    const listings = await prisma.listing.findMany({
+      select: {
+        id: true,
+        title: true,
+        location: true,
+        pricePerNight: true,
+        guests: true,
+        type: true,
+        amenities: true,
+        rating: true,
+        createdAt: true,
+        host: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: groupByRaw === "location" ? [{ location: "asc" }, { createdAt: "desc" }] : [{ hostId: "asc" }, { createdAt: "desc" }],
+    });
+
+    const groups = groupListings(listings, groupByRaw as GroupByMode);
+
+    res.status(200).json({
+      groupBy: groupByRaw,
+      totalListings: listings.length,
+      totalGroups: groups.length,
+      groups,
+    });
+  } catch (error) {
+    next(error);
   }
 }
 
