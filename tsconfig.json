@@ -4,6 +4,7 @@
     "lib": ["ES2022"],
     "module": "commonjs",
     "moduleResolution": "node",
+    "types": ["node", "jest"],
     "ignoreDeprecations": "6.0",
     "rootDir": "./src",
     "outDir": "./dist",
@@ -15,5 +16,6 @@
     "resolveJsonModule": true
   },
   "include": ["src/**/*"],
+  "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist"]
 }

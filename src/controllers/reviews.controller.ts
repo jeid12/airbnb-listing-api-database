@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import prisma from "../config/prisma";
-import { getCache, setCache, deleteCacheByPrefix } from "../config/cache";
+import { getCache, setCache, deleteCache, deleteCacheByPrefix } from "../config/cache";
+import { REVIEW_SUMMARY_CACHE_PREFIX } from "./ai.controller";
 
 export async function getListingReviews(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -74,8 +75,11 @@ export async function createReview(req: Request, res: Response, next: NextFuncti
       include: { user: { select: { name: true, avatar: true } } },
     });
 
-    // Invalidate review cache for this listing
-    await deleteCacheByPrefix(`reviews:listing:${id}:`);
+    // Invalidate review cache and AI summary cache for this listing
+    await Promise.all([
+      deleteCacheByPrefix(`reviews:listing:${id}:`),
+      deleteCache(`${REVIEW_SUMMARY_CACHE_PREFIX}${id}`),
+    ]);
 
     res.status(201).json(review);
   } catch (error) {

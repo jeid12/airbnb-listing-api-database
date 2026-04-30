@@ -60,4 +60,9 @@ async function main() {
   });
 }
 
-main();
+// Only start server when this file is executed directly
+if (require.main === module) {
+  main();
+}
+
+export default app;
