@@ -188,7 +188,7 @@ export async function forgotPassword(req: Request, res: Response, next: NextFunc
       data: { resetToken: hashedToken, resetTokenExpiry: expiry },
     });
 
-    const BASE_URL = process.env["API_URL"] ?? `http://localhost:${process.env["PORT"] ?? 3000}`;
+    const BASE_URL = process.env["API_RESET_PASSWORD_URL"] ?? `http://localhost:${process.env["PORT"] ?? 3000}`;
     const resetLink = `${BASE_URL}/auth/reset-password/${rawToken}`;
 
     // Always log the raw token in development for easy .http file testing
