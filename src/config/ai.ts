@@ -1,20 +1,14 @@
-import { ChatOpenAI } from "@langchain/openai";
+import { ChatGroq } from "@langchain/groq";
 
-export const model = new ChatOpenAI({
-  modelName: "deepseek-chat",
+export const model = new ChatGroq({
+  model: "llama3-8b-8192",
   temperature: 0.7,
-  openAIApiKey: process.env["DEEPSEEK_API_KEY"],
-  configuration: {
-    baseURL: "https://api.deepseek.com",
-  },
+  apiKey: process.env["GROQ_API_KEY"],
 });
 
 // Deterministic model for filter extraction — temperature 0 gives consistent JSON
-export const filterModel = new ChatOpenAI({
-  modelName: "deepseek-chat",
+export const filterModel = new ChatGroq({
+  model: "llama3-8b-8192",
   temperature: 0,
-  openAIApiKey: process.env["DEEPSEEK_API_KEY"],
-  configuration: {
-    baseURL: "https://api.deepseek.com",
-  },
+  apiKey: process.env["GROQ_API_KEY"],
 });
