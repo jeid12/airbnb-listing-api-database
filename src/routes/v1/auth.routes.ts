@@ -3,6 +3,9 @@ import {
   register,
   login,
   getMe,
+  updateMe,
+  getMyBookings,
+  getMyListings,
   changePassword,
   forgotPassword,
   resetPassword,
@@ -212,3 +215,8 @@ authRouter.post("/forgot-password", forgotPassword);
  *               $ref: '#/components/schemas/ErrorResponse'
  */
 authRouter.post("/reset-password/:token", resetPassword);
+
+// Authenticated convenience routes
+authRouter.put("/me",           authenticate, updateMe);
+authRouter.get("/me/bookings",  authenticate, getMyBookings);
+authRouter.get("/me/listings",  authenticate, getMyListings);

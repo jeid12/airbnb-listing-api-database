@@ -68,7 +68,7 @@ export async function createBooking(req: Request, res: Response, next: NextFunct
       return;
     }
 
-    const { listingId, checkIn, checkOut } = result.data;
+    const { listingId, checkIn, checkOut, guests } = result.data;
     const guestId = req.userId!; // always from the verified token
 
     const listing = await prisma.listing.findFirst({ where: { id: listingId } });
@@ -100,6 +100,7 @@ export async function createBooking(req: Request, res: Response, next: NextFunct
         listingId,
         checkIn,
         checkOut,
+        guests: guests ?? 1,
         totalPrice,
         status: BookingStatus.PENDING,
       },

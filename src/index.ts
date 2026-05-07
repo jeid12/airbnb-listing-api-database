@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express, { type Request, type Response, type NextFunction } from "express";
+import cors from "cors";
 import compression from "compression";
 import morgan from "morgan";
 import { connectDB } from "./config/prisma";
@@ -16,6 +17,11 @@ const PORT = Number(process.env["PORT"]) || 3000;
 // Trusting one proxy avoids express-rate-limit throwing on X-Forwarded-For.
 app.set("trust proxy", 1);
 
+app.use(cors({
+  origin: process.env["CORS_ORIGIN"] ?? "*",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 app.use(compression());
 app.use(morgan(process.env["NODE_ENV"] === "production" ? "combined" : "dev"));
 app.use(express.json());

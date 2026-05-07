@@ -94,7 +94,7 @@ bookingsRouter.get("/:id", getBookingById);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-bookingsRouter.post("/", authenticate, requireGuest, createBooking);
+bookingsRouter.post("/", authenticate, createBooking); // any authenticated user can book
 
 /**
  * @swagger

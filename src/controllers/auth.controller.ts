@@ -244,3 +244,91 @@ export async function resetPassword(req: Request, res: Response, next: NextFunct
     next(error);
   }
 }
+
+export async function updateMe(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { name, username, phone, bio, avatar } = req.body;
+    const data: Record<string, unknown> = {};
+    if (name)     data["name"]     = String(name);
+    if (username) data["username"] = String(username);
+    if (phone)    data["phone"]    = String(phone);
+    if (bio !== undefined) data["bio"] = bio ? String(bio) : null;
+    if (avatar !== undefined) data["avatar"] = avatar ? String(avatar) : null;
+
+    const user = await prisma.user.update({
+      where: { id: req.userId! },
+      data,
+    });
+    res.status(200).json(omitPassword(user));
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getMyBookings(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const pageNum  = Math.max(1, parseInt(String(req.query["page"]  ?? "1"),  10));
+    const limitNum = Math.max(1, parseInt(String(req.query["limit"] ?? "10"), 10));
+    const status   = req.query["status"] ? String(req.query["status"]).toUpperCase() : undefined;
+
+    const where = {
+      guestId: req.userId!,
+      ...(status ? { status: status as import("@prisma/client").BookingStatus } : {}),
+    };
+
+    const [bookings, total] = await Promise.all([
+      prisma.booking.findMany({
+        where,
+        include: {
+          listing: {
+            select: {
+              id: true, title: true, location: true, type: true, pricePerNight: true,
+              photos: { select: { url: true }, take: 1 },
+              host: { select: { id: true, name: true, avatar: true } },
+            },
+          },
+          review: { select: { id: true, rating: true, comment: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+      }),
+      prisma.booking.count({ where }),
+    ]);
+
+    res.status(200).json({
+      data: bookings,
+      meta: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getMyListings(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const pageNum  = Math.max(1, parseInt(String(req.query["page"]  ?? "1"),  10));
+    const limitNum = Math.max(1, parseInt(String(req.query["limit"] ?? "10"), 10));
+
+    const [listings, total] = await Promise.all([
+      prisma.listing.findMany({
+        where: { hostId: req.userId! },
+        include: {
+          photos: { select: { url: true }, take: 1 },
+          _count: { select: { bookings: true, reviews: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        skip: (pageNum - 1) * limitNum,
+        take: limitNum,
+      }),
+      prisma.listing.count({ where: { hostId: req.userId! } }),
+    ]);
+
+    res.status(200).json({
+      data: listings,
+      meta: { total, page: pageNum, limit: limitNum, totalPages: Math.ceil(total / limitNum) },
+    });
+  } catch (error) {
+    next(error);
+  }
+}

@@ -25,6 +25,15 @@ enum BookingStatus {
   CANCELLED
 }
 
+enum NotificationType {
+  BOOKING_REQUEST
+  BOOKING_CONFIRMED
+  BOOKING_CANCELLED
+  REVIEW_RECEIVED
+  MESSAGE_RECEIVED
+  SYSTEM
+}
+
 model User {
   id               String    @id @default(uuid())
   name             String
@@ -40,10 +49,15 @@ model User {
   resetTokenExpiry DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+  isSuperhost      Boolean   @default(false)
   listings         Listing[]
   bookings         Booking[]
   reviews          Review[]
   profile          Profile?
+  wishlists        Wishlist[]
+  sentMessages     Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  notifications    Notification[]
 
   @@index([name])
   @@index([role])
@@ -65,7 +79,11 @@ model Listing {
   location      String
   pricePerNight Float
   guests        Int
+  bedrooms      Int            @default(1)
+  beds          Int            @default(1)
+  bathrooms     Float          @default(1)
   type          ListingType
+  category      String         @default("trending")
   amenities     String[]
   rating        Float?
   createdAt     DateTime       @default(now())
@@ -75,9 +93,11 @@ model Listing {
   bookings      Booking[]
   photos        ListingPhoto[]
   reviews       Review[]
+  wishlistItems WishlistItem[]
 
   @@index([location])
   @@index([type])
+  @@index([category])
   @@index([pricePerNight])
   @@index([hostId])
 }
@@ -94,6 +114,7 @@ model Booking {
   id         String        @id @default(uuid())
   checkIn    DateTime
   checkOut   DateTime
+  guests     Int           @default(1)
   totalPrice Float
   status     BookingStatus @default(PENDING)
   createdAt  DateTime      @default(now())
@@ -101,6 +122,7 @@ model Booking {
   guestId    String
   listing    Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
   listingId  String
+  review     Review?
 
   @@index([guestId])
   @@index([listingId])
@@ -115,8 +137,64 @@ model Review {
   userId    String
   listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   listingId String
+  booking   Booking? @relation(fields: [bookingId], references: [id])
+  bookingId String?  @unique
   createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([listingId])
+}
+
+model Wishlist {
+  id        String         @id @default(uuid())
+  name      String         @default("My Wishlist")
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     WishlistItem[]
+  createdAt DateTime       @default(now())
+
+  @@index([userId])
+}
+
+model WishlistItem {
+  id         String   @id @default(uuid())
+  wishlistId String
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  listingId  String
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  addedAt    DateTime @default(now())
+
+  @@unique([wishlistId, listingId])
+  @@index([wishlistId])
+  @@index([listingId])
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  content    String
+  isRead     Boolean  @default(false)
+  senderId   String
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  listingId  String?
+  createdAt  DateTime @default(now())
+
+  @@index([senderId])
+  @@index([receiverId])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  type      NotificationType
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  data      String?
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@index([userId])
+  @@index([isRead])
 }
