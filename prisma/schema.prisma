@@ -49,15 +49,18 @@ model User {
   resetTokenExpiry DateTime?
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
-  isSuperhost      Boolean   @default(false)
-  listings         Listing[]
-  bookings         Booking[]
-  reviews          Review[]
-  profile          Profile?
-  wishlists        Wishlist[]
-  sentMessages     Message[] @relation("SentMessages")
-  receivedMessages Message[] @relation("ReceivedMessages")
-  notifications    Notification[]
+  isSuperhost          Boolean             @default(false)
+  listings             Listing[]
+  bookings             Booking[]
+  reviews              Review[]
+  profile              Profile?
+  wishlists            Wishlist[]
+  sentMessages         Message[]           @relation("SentMessages")
+  receivedMessages     Message[]           @relation("ReceivedMessages")
+  notifications        Notification[]
+  experiences          Experience[]
+  experienceBookings   ExperienceBooking[]
+  services             Service[]
 
   @@index([name])
   @@index([role])
@@ -197,4 +200,95 @@ model Notification {
 
   @@index([userId])
   @@index([isRead])
+}
+
+// ─── Experiences ──────────────────────────────────────────────────────────────
+
+model Experience {
+  id          String              @id @default(uuid())
+  title       String
+  description String
+  location    String
+  isOnline    Boolean             @default(false)
+  category    String
+  duration    Float
+  price       Float
+  rating      Float?
+  maxGuests   Int                 @default(10)
+  languages   String[]            @default([])
+  highlights  String[]            @default([])
+  includes    String[]            @default([])
+  isPublished Boolean             @default(true)
+  isGuestFav  Boolean             @default(false)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  hostId      String
+  host        User                @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  photos      ExperiencePhoto[]
+  bookings    ExperienceBooking[]
+
+  @@index([category])
+  @@index([location])
+  @@index([hostId])
+  @@index([price])
+}
+
+model ExperiencePhoto {
+  id           String     @id @default(uuid())
+  url          String
+  publicId     String?
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+}
+
+model ExperienceBooking {
+  id           String     @id @default(uuid())
+  date         DateTime
+  guests       Int        @default(1)
+  totalPrice   Float
+  status       String     @default("PENDING")
+  createdAt    DateTime   @default(now())
+  guestId      String
+  guest        User       @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  @@index([guestId])
+  @@index([experienceId])
+}
+
+// ─── Services ─────────────────────────────────────────────────────────────────
+
+model Service {
+  id           String         @id @default(uuid())
+  title        String
+  description  String
+  location     String
+  category     String
+  price        Float
+  priceUnit    String         @default("hour")
+  duration     String?
+  tags         String[]       @default([])
+  rating       Float?
+  responseTime String         @default("Within 2 hours")
+  isPublished  Boolean        @default(true)
+  isGuestFav   Boolean        @default(false)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  hostId       String
+  host         User           @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  photos       ServicePhoto[]
+
+  @@index([category])
+  @@index([location])
+  @@index([hostId])
+  @@index([price])
+}
+
+model ServicePhoto {
+  id        String  @id @default(uuid())
+  url       String
+  publicId  String?
+  serviceId String
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 }
