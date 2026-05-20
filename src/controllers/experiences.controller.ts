@@ -2,6 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../config/prisma";
 
+// Express 5 types `req.params[key]` as `string | string[]`. Normalise to string.
+const param = (v: string | string[]): string => (Array.isArray(v) ? v[0] : v);
+
 const HOST_SELECT = { id: true, name: true, avatar: true, isSuperhost: true };
 
 const FULL_INCLUDE = {
@@ -42,7 +45,7 @@ export async function getAllExperiences(req: Request, res: Response, next: NextF
 export async function getExperienceById(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const exp = await prisma.experience.findUnique({
-      where: { id: req.params.id },
+      where: { id: param(req.params.id) },
       include: FULL_INCLUDE,
     });
     if (!exp) { res.status(404).json({ error: "Experience not found" }); return; }
@@ -87,7 +90,7 @@ export async function createExperience(req: Request, res: Response, next: NextFu
 /** PUT /experiences/:id */
 export async function updateExperience(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const existing = await prisma.experience.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.experience.findUnique({ where: { id: param(req.params.id) } });
     if (!existing) { res.status(404).json({ error: "Experience not found" }); return; }
     if (existing.hostId !== req.userId && req.role !== "ADMIN") {
       res.status(403).json({ error: "Not your experience" }); return;
@@ -97,7 +100,7 @@ export async function updateExperience(req: Request, res: Response, next: NextFu
             maxGuests, languages, highlights, includes, isPublished, isGuestFav } = req.body;
 
     const exp = await prisma.experience.update({
-      where: { id: req.params.id },
+      where: { id: param(req.params.id) },
       data: {
         ...(title       !== undefined && { title }),
         ...(description !== undefined && { description }),
@@ -122,12 +125,12 @@ export async function updateExperience(req: Request, res: Response, next: NextFu
 /** DELETE /experiences/:id */
 export async function deleteExperience(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const existing = await prisma.experience.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.experience.findUnique({ where: { id: param(req.params.id) } });
     if (!existing) { res.status(404).json({ error: "Experience not found" }); return; }
     if (existing.hostId !== req.userId && req.role !== "ADMIN") {
       res.status(403).json({ error: "Not your experience" }); return;
     }
-    await prisma.experience.delete({ where: { id: req.params.id } });
+    await prisma.experience.delete({ where: { id: param(req.params.id) } });
     res.json({ message: "Deleted" });
   } catch (e) { next(e); }
 }
@@ -135,7 +138,7 @@ export async function deleteExperience(req: Request, res: Response, next: NextFu
 /** POST /experiences/:id/book */
 export async function bookExperience(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const exp = await prisma.experience.findUnique({ where: { id: req.params.id } });
+    const exp = await prisma.experience.findUnique({ where: { id: param(req.params.id) } });
     if (!exp) { res.status(404).json({ error: "Experience not found" }); return; }
 
     const { date, guests } = req.body;

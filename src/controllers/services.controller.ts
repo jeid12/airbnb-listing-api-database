@@ -2,6 +2,9 @@ import { Request, Response, NextFunction } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "../config/prisma";
 
+// Express 5 types `req.params[key]` as `string | string[]`. Normalise to string.
+const param = (v: string | string[]): string => (Array.isArray(v) ? v[0] : v);
+
 const HOST_SELECT = { id: true, name: true, avatar: true, isSuperhost: true };
 
 const FULL_INCLUDE = {
@@ -40,7 +43,7 @@ export async function getAllServices(req: Request, res: Response, next: NextFunc
 export async function getServiceById(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const svc = await prisma.service.findUnique({
-      where: { id: req.params.id },
+      where: { id: param(req.params.id) },
       include: FULL_INCLUDE,
     });
     if (!svc) { res.status(404).json({ error: "Service not found" }); return; }
@@ -83,7 +86,7 @@ export async function createService(req: Request, res: Response, next: NextFunct
 /** PUT /services/:id */
 export async function updateService(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const existing = await prisma.service.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.service.findUnique({ where: { id: param(req.params.id) } });
     if (!existing) { res.status(404).json({ error: "Service not found" }); return; }
     if (existing.hostId !== req.userId && req.role !== "ADMIN") {
       res.status(403).json({ error: "Not your service" }); return;
@@ -93,7 +96,7 @@ export async function updateService(req: Request, res: Response, next: NextFunct
             duration, tags, responseTime, isPublished, isGuestFav } = req.body;
 
     const svc = await prisma.service.update({
-      where: { id: req.params.id },
+      where: { id: param(req.params.id) },
       data: {
         ...(title        !== undefined && { title }),
         ...(description  !== undefined && { description }),
@@ -116,12 +119,12 @@ export async function updateService(req: Request, res: Response, next: NextFunct
 /** DELETE /services/:id */
 export async function deleteService(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const existing = await prisma.service.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.service.findUnique({ where: { id: param(req.params.id) } });
     if (!existing) { res.status(404).json({ error: "Service not found" }); return; }
     if (existing.hostId !== req.userId && req.role !== "ADMIN") {
       res.status(403).json({ error: "Not your service" }); return;
     }
-    await prisma.service.delete({ where: { id: req.params.id } });
+    await prisma.service.delete({ where: { id: param(req.params.id) } });
     res.json({ message: "Deleted" });
   } catch (e) { next(e); }
 }
